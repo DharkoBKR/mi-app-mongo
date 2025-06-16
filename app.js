@@ -1,64 +1,75 @@
 // app.js
 
 const { MongoClient } = require('mongodb');
+const express = require('express'); // <-- Nuevo: Importa Express
+const app = express(); // <-- Nuevo: Inicializa Express
 
-// URI de conexión a tu base de datos MongoDB
-// Por defecto, MongoDB corre en localhost:27017
-const uri = 'mongodb://localhost:27017';
-const dbName = 'miBaseDeDatosVSCode'; // El nombre de la base de datos que usaremos
+// Configuración para Railway y local
+const PORT = process.env.PORT || 3000; // Usa el puerto de Railway o 3000 localmente
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017';
+const DB_NAME = 'miBaseDeDatosVSCode'; // El nombre de la base de datos que usaremos
 
-async function main() {
-  const client = new MongoClient(uri);
+let dbClient; // Para almacenar la conexión al cliente de MongoDB
 
+// Conectar a MongoDB
+async function connectToMongo() {
   try {
-    // Conectarse al servidor de MongoDB
-    await client.connect();
+    dbClient = new MongoClient(MONGODB_URI);
+    await dbClient.connect();
     console.log('Conectado exitosamente al servidor de MongoDB');
-
-    const db = client.db(dbName);
-    const collection = db.collection('documentosEjemplo');
-
-    // --- Operaciones CRUD ---
-
-    // 1. Insertar un documento
-    console.log('\n--- Insertando documento ---');
-    const insertResult = await collection.insertOne({
-      nombre: 'Artículo de Ejemplo',
-      autor: 'Autor NodeJS',
-      fecha: new Date(),
-      tags: ['node', 'mongo', 'vscode'],
-    });
-    console.log('Documento insertado con ID:', insertResult.insertedId);
-
-    // 2. Buscar documentos
-    console.log('\n--- Buscando documentos ---');
-    const findResult = await collection.find({ autor: 'Autor NodeJS' }).toArray();
-    console.log('Documentos encontrados:', findResult);
-
-    // 3. Actualizar un documento
-    console.log('\n--- Actualizando documento ---');
-    const updateResult = await collection.updateOne(
-      { nombre: 'Artículo de Ejemplo' }, // Criterio de búsqueda
-      { $set: { estado: 'publicado' } } // Actualización
-    );
-    console.log('Documentos actualizados:', updateResult.modifiedCount);
-
-    // 4. Eliminar un documento (opcional, cuidado al usarlo)
-    // Descomenta para probar la eliminación
-    /*
-    console.log('\n--- Eliminando documento ---');
-    const deleteResult = await collection.deleteOne({ nombre: 'Artículo de Ejemplo' });
-    console.log('Documentos eliminados:', deleteResult.deletedCount);
-    */
-
   } catch (err) {
-    console.error('Error al conectar o realizar operaciones:', err);
-  } finally {
-    // Asegurarse de cerrar la conexión
-    await client.close();
-    console.log('\nConexión a MongoDB cerrada.');
+    console.error('Error al conectar a MongoDB:', err);
+    process.exit(1); // Salir si no se puede conectar a la BD
   }
 }
 
-// Ejecuta la función principal
-main().catch(console.error);
+// Middleware para parsear JSON
+app.use(express.json());
+
+// --- Rutas de la API (Ejemplos) ---
+
+// Ruta Home
+app.get('/', (req, res) => {
+  res.send('¡Mi aplicación Node.js con MongoDB está corriendo en Railway!');
+});
+
+// Ruta para insertar un documento
+app.post('/documentos', async (req, res) => {
+  try {
+    if (!dbClient) {
+      return res.status(500).send('No conectado a la base de datos.');
+    }
+    const collection = dbClient.db(DB_NAME).collection('documentosEjemplo');
+    const document = { ...req.body, fecha: new Date() };
+    const result = await collection.insertOne(document);
+    res.status(201).json({ message: 'Documento insertado', id: result.insertedId });
+  } catch (error) {
+    console.error('Error al insertar documento:', error);
+    res.status(500).send('Error interno del servidor al insertar.');
+  }
+});
+
+// Ruta para obtener todos los documentos
+app.get('/documentos', async (req, res) => {
+  try {
+    if (!dbClient) {
+      return res.status(500).send('No conectado a la base de datos.');
+    }
+    const collection = dbClient.db(DB_NAME).collection('documentosEjemplo');
+    const documentos = await collection.find({}).toArray();
+    res.json(documentos);
+  } catch (error) {
+    console.error('Error al obtener documentos:', error);
+    res.status(500).send('Error interno del servidor al obtener.');
+  }
+});
+
+// Iniciar el servidor
+async function startServer() {
+  await connectToMongo(); // Conectar a MongoDB antes de iniciar el servidor
+  app.listen(PORT, () => {
+    console.log(`Servidor escuchando en el puerto ${PORT}`);
+  });
+}
+
+startServer().catch(console.error);
