@@ -6,7 +6,7 @@ app.use(express.json());
 
 // Conectar a MongoDB Atlas
 // La base de datos se especifica en la cadena de conexión después de .net/
-mongoose.connect("mongodb+srv://Dharko:ciD4KSdlfp7ZOIhi@dharko.i3bcvui.mongodb.net/big-data?retryWrites=true&w=majority")
+mongoose.connect("mongodb+srv://Dharko:ciD4KSdlfp7ZOIhi@dharko.i3bcvui.mongodb.net/")
   .then(() => console.log('Conectado a MongoDB Atlas'))
   .catch((error) => console.error('Error conectando a MongoDB:', error));
 
