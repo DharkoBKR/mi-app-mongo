@@ -4,33 +4,43 @@ const app = express();
 
 app.use(express.json());
 
-// Conectar a MongoDB Atlas
-// La base de datos se especifica en la cadena de conexión después de .net/
-mongoose.connect("mongodb+srv://Dharko:ciD4KSdlfp7ZOIhi@dharko.i3bcvui.mongodb.net/")
+mongoose.connect("mongodb+srv://Dharko:ciD4KSdlfp7ZOIhi@dharko.i3bcvui.mongodb.net/big-data?retryWrites=true&w=majority")
   .then(() => console.log('Conectado a MongoDB Atlas'))
   .catch((error) => console.error('Error conectando a MongoDB:', error));
 
-// Definir esquema y modelo
-const languageSchema = new mongoose.Schema({
-  language: { type: String, required: true },
-  focus: { type: String, required: true },
-  popular_libraries: [String]
-});
+const languageStatsSchema = new mongoose.Schema({
+  popular_libraries: [String],
+  lenguajes_ia: {
+    porcentaje_uso_mundial: [
+      {
+        lenguaje: String,
+        porcentaje: Number
+      }
+    ],
+    top_10_mundial: [String],
+    top_5_chile: [String],
+    llm_comercio_chile: [
+      {
+        lenguaje: String,
+        uso: String
+      }
+    ]
+  }
+}, { collection: 'ias-bd' });
 
-// La colección se especifica en el segundo argumento de mongoose.model
-const Language = mongoose.model('ias-bd', languageSchema);
+const LanguageStats = mongoose.model('LanguageStats', languageStatsSchema);
 
-// Ruta para obtener todos los lenguajes IA
-app.get('/languages', async (req, res) => {
+app.get('/', async (req, res) => {
   try {
-    const languages = await Language.find();
-    res.json(languages);
+    const stats = await LanguageStats.findOne(); // solo hay un documento, o el primero
+    if (!stats) return res.status(404).json({ message: 'Datos no encontrados' });
+    res.json(stats.lenguajes_ia);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 });
 
-// Servidor
-app.listen(3000, () => {
-  console.log("Servidor está corriendo en puerto 3000");
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Servidor corriendo en puerto ${PORT}`);
 });
